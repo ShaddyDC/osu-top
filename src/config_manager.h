@@ -5,6 +5,7 @@
 
 struct Config{
     std::string api_key;
+    std::string player;
 };
 
 class Config_manager{
@@ -16,6 +17,9 @@ public:
 
     Config config;
     const char* save_status = nullptr;
+
+private:
+    bool show_apikey = false;
 };
 
 #endif //SLIDER_DRAW_CONFIG_MANAGER_H

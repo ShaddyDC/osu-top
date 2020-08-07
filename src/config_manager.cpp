@@ -97,12 +97,14 @@ void Config_manager::load()
         json = nlohmann::json::object();
 
     config.api_key = json.value("api_key", "");
+    config.player = json.value("player", "");
 }
 
 void Config_manager::save()
 {
     nlohmann::json json;
     json["api_key"] = config.api_key;
+    json["player"] = config.player;
 
     std::ofstream file{ config_file };
     if(!file){
@@ -133,7 +135,10 @@ void Config_manager::save()
 void Config_manager::config_window()
 {
     if(ImGui::Begin("config")){
-        ImGui::InputText("Api Key", &config.api_key);
+        ImGui::InputText("Api Key", &config.api_key, show_apikey ? 0 : ImGuiInputTextFlags_Password);
+        ImGui::SameLine();
+        ImGui::Checkbox("Show", &show_apikey);
+        ImGui::InputText("Player", &config.player);
         if(ImGui::Button("Reload")) load();
         ImGui::SameLine();
         if(ImGui::Button("Save")) save();
