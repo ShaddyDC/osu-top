@@ -21,7 +21,7 @@ add_subdirectory(libs)
 add_executable(osu_top
     src/main.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
-)
+        src/config_manager.cpp src/config_manager.h)
 
 # allow inclusion of headers from other folders (version.cpp)
 target_include_directories(osu_top PRIVATE src)

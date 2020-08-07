@@ -9,6 +9,8 @@
 #include <Magnum/Platform/Sdl2Application.h>
 #endif
 
+#include "config_manager.h"
+
 namespace Magnum::Examples {
 
         using namespace Math::Literals;
@@ -33,10 +35,8 @@ namespace Magnum::Examples {
         private:
             ImGuiIntegration::Context _imgui{NoCreate};
 
-            bool _showDemoWindow = true;
-            bool _showAnotherWindow = false;
             Color4 _clearColor = 0x72909aff_rgbaf;
-            Float _floatValue = 0.0f;
+            Config_manager config;
         };
 
         ImGuiExample::ImGuiExample(const Arguments& arguments): Platform::Application{arguments,
@@ -77,7 +77,7 @@ namespace Magnum::Examples {
             else if(!ImGui::GetIO().WantTextInput && isTextInputActive())
                 stopTextInput();
 
-
+            config.config_window();
 
             /* Update application cursor */
             _imgui.updateApplicationCursor(*this);
