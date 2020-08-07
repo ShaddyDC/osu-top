@@ -1,0 +1,9 @@
+[submodule "toolchains"]
+	path = toolchains
+	url = https://github.com/mosra/toolchains/
+[submodule "libs/imgui"]
+	path = libs/imgui
+	url = https://github.com/ocornut/imgui
+[submodule "libs/magnum-integration"]
+	path = libs/magnum-integration
+	url = https://github.com/mosra/magnum-integration
