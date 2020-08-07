@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.12 FATAL_ERROR)
 
-project(slider_draw LANGUAGES CXX)
+project(osu_top LANGUAGES CXX)
 
 list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/modules")
 
 find_package(Magnum REQUIRED GL)
+find_package(Corrade REQUIRED Utility)
 
 if(CORRADE_TARGET_EMSCRIPTEN)
     find_package(Magnum REQUIRED Sdl2Application)   # Todo: Move this to emscripten
@@ -21,7 +22,7 @@ add_subdirectory(libs)
 add_executable(osu_top
     src/main.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/version.cpp
-        src/config_manager.cpp src/config_manager.h)
+    src/config_manager.cpp src/config_manager.h)
 
 # allow inclusion of headers from other folders (version.cpp)
 target_include_directories(osu_top PRIVATE src)
@@ -34,7 +35,7 @@ set_target_properties(osu_top PROPERTIES
 )
 
 if(CORRADE_TARGET_EMSCRIPTEN)
-    set_target_properties(slider_draw PROPERTIES
+    set_target_properties(osu_top PROPERTIES
         LINK_FLAGS "-lidbfs.js -s EXPORTED_FUNCTIONS='[_main, _loaded_callback]' -s EXPORTED_RUNTIME_METHODS='[ccall]' -s ASYNCIFY=1 -s ASYNCIFY_STACK_SIZE=65535"
     )
     # -lidbfs.js for dbfs file system
@@ -51,6 +52,7 @@ target_link_libraries(osu_top PRIVATE
     MagnumIntegration::ImGui
     ImGui::imgui_stdlib
     Corrade::Utility
+    nlohmann_json::nlohmann_json
 )
 
 # WebGL doesn't need OpenSSL because of javascript
@@ -105,8 +107,8 @@ if(CORRADE_TARGET_EMSCRIPTEN)
             ${MAGNUM_WEBAPPLICATION_CSS}
             DESTINATION ${MAGNUM_DEPLOY_PREFIX})
     install(FILES
-            $<TARGET_FILE_DIR:slider_draw>/osu_top.js.mem
-            $<TARGET_FILE_DIR:slider_draw>/osu_top.wasm
+            $<TARGET_FILE_DIR:osu_top>/osu_top.js.mem
+            $<TARGET_FILE_DIR:osu_top>/osu_top.wasm
             DESTINATION ${MAGNUM_DEPLOY_PREFIX} OPTIONAL)
 endif()
 
