@@ -1,0 +1,6 @@
+.vscode
+build
+build-emscripten
+imgui.ini
+.idea
+cmake-build-debug
