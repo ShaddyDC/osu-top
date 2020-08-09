@@ -16,17 +16,18 @@ struct Score{
     int count_geki;
     bool perfect;
     int enabled_mods;
-    int user_id;
+    std::string user_id;
     std::string date;
     std::string rank;
     float pp;
     bool replay_available;
+    std::string username;
 };
 
 inline void from_json(const nlohmann::json& j, Score& score)
 {
     std::string buffer;
-    j.at("beatmap_id").get_to(score.beatmap_id);
+    score.beatmap_id = j.value("beatmap_id", "");
     j.at("score_id").get_to(score.score_id);
     j.at("score").get_to(buffer);
     score.score = std::stoll(buffer.c_str());
@@ -48,14 +49,14 @@ inline void from_json(const nlohmann::json& j, Score& score)
     score.perfect = static_cast<bool>(std::stoi(buffer.c_str()));
     j.at("enabled_mods").get_to(buffer);
     score.enabled_mods = std::stoi(buffer.c_str());
-    j.at("user_id").get_to(buffer);
-    score.user_id = std::stoi(buffer.c_str());
+    j.at("user_id").get_to(score.user_id);
     j.at("date").get_to(score.date);
     j.at("rank").get_to(score.rank);
     j.at("pp").get_to(buffer);
     score.pp = std::stof(buffer.c_str());
     j.at("replay_available").get_to(buffer);
     score.replay_available = static_cast<bool>(std::stoi(buffer.c_str()));
+    score.username = j.value("username", "");
 }
 
 #endif //OSU_TOP_SCORE_H

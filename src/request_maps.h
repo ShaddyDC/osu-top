@@ -21,7 +21,8 @@ public:
     void update();
     void request_window();
     void request();
-    void top_plays(std::string_view player, Gamemode gamemode);
+    static std::future<std::string> top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key);
+    static std::future<std::string> top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key);
 
     Config_manager& config;
 
@@ -33,7 +34,10 @@ public:
 
     std::string text = "";
     std::vector<Score> user_scores;
+    std::vector<Score> recommendations;
     std::vector<std::string> user_scores_strings;
+    std::vector<std::string> recommendations_strings;
+    int recommendation_selection = 0;
 
     float min_pp = 0.f;
     float max_pp = 0.f;
