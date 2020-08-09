@@ -4,6 +4,7 @@
 #include <misc/cpp/imgui_stdlib.h>
 #include <nlohmann/json.hpp>
 #include <execution>
+#include <cstdlib>
 
 Request_maps::Request_maps(Config_manager& config) : config{ config }, player{ config.config.player }
 {
@@ -239,8 +240,14 @@ void Request_maps::request_window()
                        });
         ImGui::ListBox("Recommendations", &recommendation_selection, rec_items.data(), rec_items.size(), 8);
         if(recommendation_selection < recommendations.size()) {
-            ImGui::SameLine();
             ImGui::LabelText("Map", recommendations[recommendation_selection].beatmap_id.c_str());
+            ImGui::SameLine();
+
+#ifdef __unix__
+            if(ImGui::Button("Copy")){
+                std::system(("echo " + recommendations[recommendation_selection].beatmap_id + " | xclip -selection clipboard").c_str());
+            }
+#endif
         }
 
         std::vector<const char*> items;
