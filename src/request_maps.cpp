@@ -15,6 +15,7 @@ auto acc(const Score& score)
     return static_cast<float>(300 * score.count_300 + 100 * score.count_100 + 50 * score.count_50)
            / static_cast<float>(300 * (score.count_300 + score.count_100 + score.count_50 + score.count_miss));
 }
+
 #include <Corrade/Utility/Debug.h>
 
 std::string mods_string(int mods)
@@ -185,9 +186,14 @@ void Request_maps::update()
 
         for(const auto& score_list : score_lists) {
             std::copy_if(score_list.cbegin(), score_list.cend(), std::back_inserter(recommendations),
-                         [max_pp = max_pp, min_pp = min_pp](const auto& score)
+                         [max_pp = max_pp, min_pp = min_pp, &user_scores = user_scores](const auto& score)
                          {
-                             return score.pp <= max_pp && score.pp >= min_pp;
+                             return score.pp <= max_pp && score.pp >= min_pp
+                                    && std::none_of(user_scores.cbegin(), user_scores.cend(),
+                                                    [id = score.beatmap_id](const auto& score)
+                                                    {
+                                                        return score.beatmap_id == id;
+                                                    });
                          });
         }
 
@@ -201,7 +207,8 @@ void Request_maps::update()
                        [](const auto& score)
                        {
                            return score.beatmap_id + " - " + score.username + " " + std::to_string(score.pp) + " (" +
-                                  std::to_string(score.maxcombo) + "): " + std::to_string(acc(score)) + " " + mods_string(score.enabled_mods);
+                                  std::to_string(score.maxcombo) + "): " + std::to_string(acc(score)) + " " +
+                                  mods_string(score.enabled_mods);
                        });
 
     }
