@@ -14,6 +14,29 @@ enum class Gamemode : int{
     mania = 3
 };
 
+enum class Request_stage{
+    idle,
+    fetching_user,
+    finding_players,
+    loading_scores,
+};
+
+inline auto stage_to_string(const Request_stage stage)
+{
+    switch (stage) {
+        case Request_stage::idle:
+            return "idle";
+        case Request_stage::fetching_user:
+            return "fetching_user";
+        case Request_stage::finding_players:
+            return "finding_players";
+        case Request_stage::loading_scores:
+            return "loading_scores";
+        default:
+            return "invalid value";
+    }
+}
+
 class Request_maps {
 public:
     Request_maps(Config_manager& config);
@@ -30,9 +53,8 @@ public:
     std::string player = "";
 
     std::future<std::string> running_request;
-    bool requesting = false;
+    Request_stage request_stage = Request_stage::idle;
 
-    std::string text = "";
     std::vector<Score> user_scores;
     std::vector<Score> recommendations;
     std::vector<std::string> user_scores_strings;
@@ -41,6 +63,9 @@ public:
 
     float min_pp = 0.f;
     float max_pp = 0.f;
+
+    std::vector<std::future<std::string>> maps_loading;
+    std::vector<std::future<std::string>> scores_loading;
 };
 
 

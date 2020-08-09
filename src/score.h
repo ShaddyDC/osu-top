@@ -31,6 +31,7 @@ inline void from_json(const nlohmann::json& j, Score& score)
     j.at("score_id").get_to(score.score_id);
     j.at("score").get_to(buffer);
     score.score = std::stoll(buffer.c_str());
+    score.username = j.value("username", "");
     j.at("maxcombo").get_to(buffer);
     score.maxcombo = std::stoi(buffer.c_str());
     j.at("count50").get_to(buffer);
@@ -56,7 +57,6 @@ inline void from_json(const nlohmann::json& j, Score& score)
     score.pp = std::stof(buffer.c_str());
     j.at("replay_available").get_to(buffer);
     score.replay_available = static_cast<bool>(std::stoi(buffer.c_str()));
-    score.username = j.value("username", "");
 }
 
 #endif //OSU_TOP_SCORE_H
