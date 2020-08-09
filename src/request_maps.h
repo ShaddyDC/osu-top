@@ -4,6 +4,8 @@
 #include "config_manager.h"
 #include <string_view>
 #include <future>
+#include <vector>
+#include "score.h"
 
 enum class Gamemode : int{
     osu = 0,
@@ -30,6 +32,11 @@ public:
     bool requesting = false;
 
     std::string text = "";
+    std::vector<Score> user_scores;
+    std::vector<std::string> user_scores_strings;
+
+    float min_pp = 0.f;
+    float max_pp = 0.f;
 };
 
 
