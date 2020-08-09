@@ -11,6 +11,7 @@
 #endif
 
 #include "config_manager.h"
+#include "request_maps.h"
 
 namespace Magnum::Examples {
 
@@ -37,7 +38,9 @@ namespace Magnum::Examples {
             ImGuiIntegration::Context _imgui{NoCreate};
 
             Color4 _clearColor = 0x72909aff_rgbaf;
+
             Config_manager config;
+            Request_maps requester{ config };
         };
 
         ImGuiExample::ImGuiExample(const Arguments& arguments): Platform::Application{arguments,
@@ -70,6 +73,8 @@ namespace Magnum::Examples {
         void ImGuiExample::drawEvent() {
             GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 
+            requester.update();
+
             _imgui.newFrame();
 
             /* Enable text input, if needed */
@@ -79,6 +84,7 @@ namespace Magnum::Examples {
                 stopTextInput();
 
             config.config_window();
+            requester.request_window();
 
             /* Update application cursor */
             _imgui.updateApplicationCursor(*this);
