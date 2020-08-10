@@ -3,7 +3,6 @@
 #include "web_request.h"
 #include <misc/cpp/imgui_stdlib.h>
 #include <nlohmann/json.hpp>
-#include <execution>
 #include <cstdlib>
 
 Request_maps::Request_maps(Config_manager& config) : config{ config }, player{ config.config.player }
@@ -98,8 +97,8 @@ void Request_maps::update()
                        });
         maps_loading.clear();
 
-        std::vector<std::vector<std::string>> player_lists(map_scores.size());
-        std::transform(std::execution::par_unseq, map_scores.cbegin(), map_scores.cend(), player_lists.begin(),
+        std::vector<std::vector<std::string>> player_lists;
+        std::transform(map_scores.cbegin(), map_scores.cend(), std::back_inserter(player_lists),
                        [pp_target = min_pp](const auto& map_scores)
                        {
                            try {
