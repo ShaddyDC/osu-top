@@ -239,7 +239,7 @@ void Request_maps::request_window()
                            return item.c_str();
                        });
         ImGui::ListBox("Recommendations", &recommendation_selection, rec_items.data(), rec_items.size(), 8);
-        if(recommendation_selection < recommendations.size()) {
+        if(static_cast<std::size_t>(recommendation_selection) < recommendations.size()) {
             ImGui::LabelText("Map", recommendations[recommendation_selection].beatmap_id.c_str());
             ImGui::SameLine();
 
