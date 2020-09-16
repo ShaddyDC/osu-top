@@ -2,6 +2,7 @@
 
 #include <Magnum/Magnum.h>
 #include <Corrade/Utility/Debug.h>
+#include <Corrade/Utility/DebugStl.h>
 #include <chrono>
 
 #if defined(MAGNUM_TARGET_WEBGL)
@@ -51,11 +52,17 @@ std::string get_url(const std::string& url)
     httplib::SSLClient client(host_string);
 
     const auto response = client.Get(path_string.c_str());
-    if(response && response->status == 200){
+
+    if(response){
+        if(response->status != 200){
+            Corrade::Utility::Debug() << "Loading url \"" << url << "\" may have failed:" << response->status;
+        }
         return response->body;
     }
 
-    return "Failed :(";  //Todo: Better error handling
+    Corrade::Utility::Debug() << "Loading url \"" << url << "\" failed: no response object";
+
+    return "";  //Todo: Better error handling
 }
 
 #endif
@@ -98,7 +105,7 @@ Future get_url_async(const std::string& url)
 #endif
 
 auto last_request_time = std::chrono::system_clock::now();
-constexpr const auto request_limit = 400;
+constexpr const auto request_limit = 10;
 constexpr const auto request_duration = std::chrono::milliseconds{ 1000 / request_limit };
 
 #if defined(MAGNUM_TARGET_WEBGL)
