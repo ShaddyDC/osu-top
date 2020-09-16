@@ -47,7 +47,7 @@ std::string mods_string(int mods)
 void Request_maps::update()
 {
     if(request_stage == Request_stage::fetching_user &&
-       running_request.wait_for(std::chrono::microseconds::zero()) == std::future_status::ready) {
+       running_request.ready()) {
         const auto text = running_request.get();
         const auto json = nlohmann::json::parse(text);
         user_scores.clear();
@@ -87,7 +87,7 @@ void Request_maps::update()
               std::all_of(maps_loading.cbegin(), maps_loading.cend(),
                           [](const auto& map)
                           {
-                              return map.wait_for(std::chrono::microseconds::zero()) == std::future_status::ready;
+                              return map.ready();
                           })) {
         std::vector<std::string> map_scores;
         std::transform(maps_loading.begin(), maps_loading.end(), std::back_inserter(map_scores),
@@ -151,9 +151,9 @@ void Request_maps::update()
         }
 
     } else if(request_stage == Request_stage::loading_scores) {
-        std::vector<std::future<std::string>> scores_loaded;
+        std::vector<Future> scores_loaded;
         for(auto& scores : scores_loading) {
-            if(scores.wait_for(std::chrono::microseconds::zero()) == std::future_status::ready) {
+            if(scores.ready()) {
                 scores_loaded.push_back(std::move(scores));
             }
         }
@@ -271,16 +271,14 @@ void Request_maps::request()
     request_stage = Request_stage::fetching_user;
 }
 
-std::future<std::string>
-Request_maps::top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key)
+Future Request_maps::top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key)
 {
     return get_url_async_ratelimited(
             "https://osu.ppy.sh/api/get_user_best?k=" + api_key + "&u=" + std::string{ player } + "&m=" +
             std::to_string(static_cast<int>(gamemode)) + "&limit=100");
 }
 
-std::future<std::string>
-Request_maps::top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key)
+Future Request_maps::top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key)
 {
     return get_url_async_ratelimited(
             "https://osu.ppy.sh/api/get_scores?k=" + api_key + "&m=" + std::to_string(static_cast<int>(gamemode)) +

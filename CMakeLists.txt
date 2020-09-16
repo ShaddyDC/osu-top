@@ -6,12 +6,12 @@ list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/modules")
 
 find_package(Magnum REQUIRED GL)
 find_package(Corrade REQUIRED Utility)
-find_package(Threads REQUIRED)
 
 if(CORRADE_TARGET_EMSCRIPTEN)
     find_package(Magnum REQUIRED Sdl2Application)   # Todo: Move this to emscripten
     # find_package(Magnum REQUIRED EmscriptenApplication)
 else()
+    find_package(Threads REQUIRED)
     find_package(Magnum REQUIRED Sdl2Application)
 
     # WebGL doesn't need OpenSSL because of javascript
@@ -36,11 +36,8 @@ set_target_properties(osu_top PROPERTIES
 )
 
 if(CORRADE_TARGET_EMSCRIPTEN)
-    target_compile_options(osu_top PRIVATE
-        -s USE_PTHREADS=1
-    )
     set_target_properties(osu_top PROPERTIES
-        LINK_FLAGS "-lidbfs.js -s EXPORTED_FUNCTIONS='[_main, _loaded_callback]' -s EXPORTED_RUNTIME_METHODS='[ccall]' -s ASYNCIFY=1 -s ASYNCIFY_STACK_SIZE=65535"
+        LINK_FLAGS "-lidbfs.js -s EXPORTED_FUNCTIONS='[_main, _loaded_callback, _async_wget_delete]' -s EXPORTED_RUNTIME_METHODS='[ccall]' -s ASYNCIFY=1 -s ASYNCIFY_STACK_SIZE=65535"
     )
     # -lidbfs.js for dbfs file system
     # EXPORTED_FUNCTIONS to allow access from js
@@ -57,7 +54,6 @@ target_link_libraries(osu_top PRIVATE
     ImGui::imgui_stdlib
     Corrade::Utility
     nlohmann_json::nlohmann_json
-    Threads::Threads
 )
 
 # WebGL doesn't need OpenSSL because of javascript
@@ -66,6 +62,7 @@ if(NOT CORRADE_TARGET_EMSCRIPTEN)
         OpenSSL::SSL
         OpenSSL::Crypto
         httplib::httplib
+        Threads::Threads
     )
 endif()
 

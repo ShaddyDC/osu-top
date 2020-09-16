@@ -6,6 +6,7 @@
 #include <future>
 #include <vector>
 #include "score.h"
+#include "web_request.h"
 
 enum class Gamemode : int{
     osu = 0,
@@ -44,15 +45,15 @@ public:
     void update();
     void request_window();
     void request();
-    static std::future<std::string> top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key);
-    static std::future<std::string> top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key);
+    static Future top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key);
+    static Future top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key);
 
     Config_manager& config;
 
     Gamemode gamemode = Gamemode::osu;
     std::string player = "";
 
-    std::future<std::string> running_request;
+    Future running_request;
     Request_stage request_stage = Request_stage::idle;
 
     std::vector<Score> user_scores;
@@ -64,8 +65,8 @@ public:
     float min_pp = 0.f;
     float max_pp = 0.f;
 
-    std::vector<std::future<std::string>> maps_loading;
-    std::vector<std::future<std::string>> scores_loading;
+    std::vector<Future> maps_loading;
+    std::vector<Future> scores_loading;
 };
 
 

@@ -60,16 +60,98 @@ std::string get_url(const std::string& url)
 
 #endif
 
-std::future<std::string> get_url_async(const std::string& url)
+#if defined(MAGNUM_TARGET_WEBGL)
+
+static void on_load_callback(void* arg, void* buffer, int length)
 {
-    return std::async(std::launch::async, get_url, url);
+    Magnum::Debug() << "Download complete";
+    Future& future = *reinterpret_cast<Future*>(arg);
+    future.data = std::string(reinterpret_cast<char*>(buffer), length);
 }
+
+static void on_error_callback(void* arg)
+{
+    Magnum::Debug() << "Error downloading";
+    Future& future = *reinterpret_cast<Future*>(arg);
+    future.data = "Failed :(";  // TODO: Better error handling
+}
+
+Future get_url_async(const std::string& url)
+{
+    // proxy to allow cross-origin resource sharing
+    const auto cors_url = "https://cors-anywhere.herokuapp.com/" + url;
+
+    Future future;
+    Magnum::Debug() << "Starting Download 1";
+    emscripten_async_wget_data(cors_url.c_str(), reinterpret_cast<void*>(&future), &on_load_callback, &on_error_callback);
+    return future;
+}
+
+
+#else
+
+Future get_url_async(const std::string& url)
+{
+    return Future{ std::async(std::launch::async, get_url, url) };
+}
+
+#endif
 
 auto last_request_time = std::chrono::system_clock::now();
 constexpr const auto request_limit = 400;
 constexpr const auto request_duration = std::chrono::milliseconds{ 1000 / request_limit };
 
-std::future<std::string> get_url_async_ratelimited(const std::string& url)
+#if defined(MAGNUM_TARGET_WEBGL)
+
+extern "C" {
+    void async_wget_delete(std::string& url, void* arg)
+    {
+        Magnum::Debug() << "Starting Download 2";
+        emscripten_async_wget_data(url.c_str(), arg, &on_load_callback, &on_error_callback);
+        Magnum::Debug() << "Deleting url";
+        delete &url;
+    }
+}
+
+Future request_at(const std::string& url, std::chrono::system_clock::time_point request_time)
+{
+    // proxy to allow cross-origin resource sharing
+    const auto cors_url = "https://cors-anywhere.herokuapp.com/" + url;
+    const auto delay = request_time - std::chrono::system_clock::now();
+
+    auto heap_url = new std::string(cors_url);
+
+    Future future;
+
+    EM_ASM({
+        function sleep (time) {
+            return new Promise((resolve) => setTimeout(resolve, time));
+        }
+
+        sleep($1).then(() =>{
+                Module.ccall('async_wget_delete', $0, $2, true);
+        });
+    }, heap_url, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(delay).count()), reinterpret_cast<void*>(&future));
+
+
+    return future;
+}
+
+#else
+
+Future request_at(const std::string& url, std::chrono::system_clock::time_point request_time)
+{
+    const auto fetch_function = [](const auto request_time, const std::string& url)
+            {
+                std::this_thread::sleep_until(request_time);
+                return get_url_async(url).get();
+            };
+    return Future{ std::async(std::launch::async, fetch_function, request_time, url) };
+}
+
+#endif
+
+Future get_url_async_ratelimited(const std::string& url)
 {
     const auto current_time = std::chrono::system_clock::now();
     if(last_request_time + request_duration <= current_time) {
@@ -77,11 +159,7 @@ std::future<std::string> get_url_async_ratelimited(const std::string& url)
         return get_url_async(url);
     }
 
-    const auto fetch_function = [](const auto request_time, const std::string& url)
-            {
-                std::this_thread::sleep_until(request_time);
-                return get_url_async(url).get();
-            };
     last_request_time += request_duration;
-    return std::async(std::launch::async, fetch_function, last_request_time, url);
+
+    return request_at(url, last_request_time);
 }
