@@ -126,11 +126,9 @@ extern "C" {
 
 Future request_at(const std::string& url, std::chrono::system_clock::time_point request_time)
 {
-    // proxy to allow cross-origin resource sharing
-    const auto cors_url = "https://cors-anywhere.herokuapp.com/" + url;
     const auto delay = request_time - std::chrono::system_clock::now();
 
-    auto heap_url = new std::string(cors_url);
+    auto heap_url = new std::string(url);
 
     Future future;
 
