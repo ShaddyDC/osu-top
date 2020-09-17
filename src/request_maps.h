@@ -7,6 +7,9 @@
 #include <vector>
 #include "score.h"
 #include "web_request.h"
+#include "beatmap.h"
+#include <map>
+#include <optional>
 
 enum class Gamemode : int{
     osu = 0,
@@ -67,6 +70,11 @@ public:
 
     std::vector<Future> maps_loading;
     std::vector<Future> scores_loading;
+
+    std::map<std::string, std::optional<Beatmap>> map_info;
+    std::vector<Future> map_info_loading;
+
+    Future get_map(const std::string& beatmap_id) const;
 };
 
 

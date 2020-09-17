@@ -5,20 +5,20 @@
 #include <nlohmann/json.hpp>
 #include <cstdlib>
 
+#include <Corrade/Utility/DebugStl.h>
+
 Request_maps::Request_maps(Config_manager& config) : config{ config }, player{ config.config.player }
 {
 
 }
 
-auto acc(const Score& score)
+static auto acc(const Score& score)
 {
     return static_cast<float>(300 * score.count_300 + 100 * score.count_100 + 50 * score.count_50)
            / static_cast<float>(300 * (score.count_300 + score.count_100 + score.count_50 + score.count_miss));
 }
 
-#include <Corrade/Utility/Debug.h>
-
-std::string mods_string(int mods)
+static std::string mods_string(int mods)
 {
     if(mods == 0) return "NM";
     std::string mod_string = "";
@@ -41,8 +41,6 @@ std::string mods_string(int mods)
 
     return mod_string;
 }
-
-#include <Corrade/Utility/Debug.h>
 
 void Request_maps::update()
 {
@@ -184,8 +182,10 @@ void Request_maps::update()
                            }
                        });
 
+        std::vector<Score> new_scores;
+        
         for(const auto& score_list : score_lists) {
-            std::copy_if(score_list.cbegin(), score_list.cend(), std::back_inserter(recommendations),
+            std::copy_if(score_list.cbegin(), score_list.cend(), std::back_inserter(new_scores),
                          [max_pp = max_pp, min_pp = min_pp, &user_scores = user_scores](const auto& score)
                          {
                              return score.pp <= max_pp && score.pp >= min_pp
@@ -197,10 +197,22 @@ void Request_maps::update()
                          });
         }
 
-        std::sort(recommendations.begin(), recommendations.end(), [](const auto& a, const auto& b)
-        {
-            return a.beatmap_id < b.beatmap_id;
-        });
+        for(const auto& score : new_scores){
+            if(const auto it = map_info.find(score.beatmap_id);
+            it == map_info.end()){
+                map_info_loading.push_back(get_map(score.beatmap_id));
+                map_info.emplace(score.beatmap_id, std::nullopt);
+            }
+        }
+
+        for(const auto& score : new_scores) {
+            const auto pos = std::upper_bound(recommendations.begin(), recommendations.end(), score,
+                                              [](const auto& a, const auto& b)
+            {
+                return a.beatmap_id < b.beatmap_id;
+            });
+            recommendations.insert(pos, score);
+        }
 
         recommendations_strings.clear();
         std::transform(recommendations.cbegin(), recommendations.cend(), std::back_inserter(recommendations_strings),
@@ -211,6 +223,38 @@ void Request_maps::update()
                                   mods_string(score.enabled_mods);
                        });
 
+    }
+
+    std::vector<Future> map_info_loaded;
+    for(auto& map : map_info_loading) {
+        if(map.ready()) {
+            map_info_loaded.push_back(std::move(map));
+        }
+    }
+    const auto removable = std::remove_if(map_info_loading.begin(), map_info_loading.end(),
+                                          [](const auto& scores)
+                                          {
+                                              return !scores.valid();
+                                          });
+    map_info_loading.erase(removable, map_info_loading.end());
+
+    for(auto& map : map_info_loaded){
+        const auto s = map.get();
+        try {
+            const auto json = nlohmann::json::parse(s);
+            if(json.size() != 1){
+                Magnum::Debug() << "Map_info doesn't contain 1 element" << s;
+            }
+            else{
+                for(auto map : json){
+                    auto beatmap = map.get<Beatmap>();
+                    map_info[beatmap.map_id] = beatmap;
+                }
+            }
+        }
+        catch(const nlohmann::detail::parse_error&) {
+            Magnum::Debug() << "Couldn't parse map_info" << s;
+        }
     }
 }
 
@@ -240,9 +284,9 @@ void Request_maps::request_window()
         ImGui::ListBox("Recommendations", &recommendation_selection, rec_items.data(), rec_items.size(), 8);
         if(static_cast<std::size_t>(recommendation_selection) < recommendations.size()) {
             ImGui::LabelText("Map", recommendations[recommendation_selection].beatmap_id.c_str());
-            ImGui::SameLine();
 
 #ifdef __unix__
+            ImGui::SameLine();
             if(ImGui::Button("Copy")){
                 std::system(("echo " + recommendations[recommendation_selection].beatmap_id + " | xclip -selection clipboard").c_str());
             }
@@ -262,6 +306,39 @@ void Request_maps::request_window()
         ImGui::InputFloat("max_pp", &max_pp, ImGuiInputTextFlags_ReadOnly);
     }
     ImGui::End();
+
+    if(ImGui::Begin("Map Info")){
+        if(static_cast<std::size_t>(recommendation_selection) < recommendations.size()) {
+            auto& score = recommendations[recommendation_selection];
+            auto& map_id = score.beatmap_id;
+            ImGui::LabelText("Map", map_id.c_str());
+
+            if(!map_info[map_id]){
+                ImGui::Text("Still loading info...");
+            }
+            else{
+                auto& info = *map_info[map_id];
+                ImGui::LabelText("Title", info.title.c_str());
+                ImGui::LabelText("Artist", info.artist.c_str());
+                ImGui::LabelText("Difficulty", info.diff_name.c_str());
+                ImGui::InputFloat("Rating", &info.rating, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputFloat("Stars", &info.stars, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputFloat("CS", &info.cs, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputFloat("AR", &info.ar, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputFloat("OD", &info.od, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputFloat("HP", &info.hp, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::LabelText("Mods", mods_string(score.enabled_mods).c_str());
+                ImGui::InputFloat("Acc", &score.pp, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputInt("Combo", &score.maxcombo, 1, 100, ImGuiInputTextFlags_ReadOnly);
+                ImGui::InputInt("Max combo", &info.max_combo, 1, 100, ImGuiInputTextFlags_ReadOnly);
+                float accu = acc(score);
+                ImGui::InputFloat("Acc", &accu, 0.f, 0.f, "%.3f", ImGuiInputTextFlags_ReadOnly);
+                ImGui::LabelText("Player", score.username.c_str());
+                ImGui::LabelText("hash", info.hash.c_str());
+            }
+        }
+    }
+    ImGui::End();
 }
 
 void Request_maps::request()
@@ -269,6 +346,13 @@ void Request_maps::request()
     recommendations.clear();
     running_request = top_plays(player, gamemode, config.config.api_key);
     request_stage = Request_stage::fetching_user;
+}
+
+Future Request_maps::get_map(const std::string& beatmap_id) const
+{
+    return get_url_async_ratelimited(
+            "https://osu.ppy.sh/api/get_beatmaps?k=" + config.config.api_key + "&b=" + beatmap_id + "&m=" +
+            std::to_string(static_cast<int>(gamemode)) + "&limit=5");
 }
 
 Future Request_maps::top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key)
