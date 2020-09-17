@@ -44,7 +44,7 @@ namespace Magnum::Examples {
         };
 
         ImGuiExample::ImGuiExample(const Arguments& arguments): Platform::Application{arguments,
-                                                                                      Configuration{}.setTitle("Magnum ImGui Example")
+                                                                                      Configuration{}.setTitle("osu!top")
                                                                                               .setWindowFlags(Configuration::WindowFlag::Resizable)}
         {
             _imgui = ImGuiIntegration::Context(Vector2{windowSize()}/dpiScaling(),
