@@ -4,6 +4,7 @@
 #include <Corrade/Utility/Debug.h>
 #include <Corrade/Utility/DebugStl.h>
 #include <chrono>
+#include <atomic>
 
 #if defined(MAGNUM_TARGET_WEBGL)
 #include <emscripten.h>
@@ -108,6 +109,9 @@ auto last_request_time = std::chrono::system_clock::now();
 constexpr const auto request_limit = 10;
 constexpr const auto request_duration = std::chrono::milliseconds{ 1000 / request_limit };
 
+std::atomic<int> current_requests = 0;
+constexpr const auto max_requests = 20;
+
 #if defined(MAGNUM_TARGET_WEBGL)
 
 extern "C" {
@@ -151,7 +155,14 @@ Future request_at(const std::string& url, std::chrono::system_clock::time_point 
     const auto fetch_function = [](const auto request_time, const std::string& url)
             {
                 std::this_thread::sleep_until(request_time);
-                return get_url_async(url).get();
+
+                while(current_requests >= max_requests) std::this_thread::sleep_for(std::chrono::milliseconds{ 1 });
+
+                ++current_requests;
+                const auto data = get_url_async(url).get();
+                --current_requests;
+
+                return data;
             };
     return Future{ std::async(std::launch::async, fetch_function, request_time, url) };
 }
