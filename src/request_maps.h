@@ -10,6 +10,8 @@
 #include "beatmap.h"
 #include <map>
 #include <optional>
+#include <Magnum/GL/Texture.h>
+#include <tuple>
 
 enum class Gamemode : int{
     osu = 0,
@@ -50,6 +52,7 @@ public:
     void request();
     static Future top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key);
     static Future top_plays_map(std::string beatmap, Gamemode gamemode, const std::string& api_key);
+    Future get_map(const std::string& beatmap_id) const;
 
     Config_manager& config;
 
@@ -74,7 +77,13 @@ public:
     std::map<std::string, std::optional<Beatmap>> map_info;
     std::vector<Future> map_info_loading;
 
-    Future get_map(const std::string& beatmap_id) const;
+    std::map<std::string, std::optional<Magnum::GL::Texture2D>> set_background;
+    std::vector<std::pair<std::string, Future>> set_background_loading;
+
+    void load_map_info();
+    void load_set_background();
+
+    Future get_set_background(const std::string& set_id) const;
 };
 
 

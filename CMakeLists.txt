@@ -6,6 +6,7 @@ list(INSERT CMAKE_MODULE_PATH 0 "${CMAKE_CURRENT_SOURCE_DIR}/modules")
 
 find_package(Magnum REQUIRED GL)
 find_package(Corrade REQUIRED Utility)
+find_package(MagnumPlugins REQUIRED JpegImporter)
 
 if(CORRADE_TARGET_EMSCRIPTEN)
     find_package(Magnum REQUIRED Sdl2Application)   # Todo: Move this to emscripten
@@ -54,6 +55,7 @@ target_link_libraries(osu_top PRIVATE
     ImGui::imgui_stdlib
     Corrade::Utility
     nlohmann_json::nlohmann_json
+    MagnumPlugins::JpegImporter
 )
 
 # WebGL doesn't need OpenSSL because of javascript

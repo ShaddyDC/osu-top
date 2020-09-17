@@ -6,6 +6,12 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <MagnumPlugins/JpegImporter/JpegImporter.h>
+#include <Corrade/Containers/ArrayView.h>
+#include <Corrade/Containers/Optional.h>
+#include <Magnum/Trade/ImageData.h>
+#include <Magnum/ImageView.h>
+#include <Magnum/GL/TextureFormat.h>
 
 #include <Corrade/Utility/DebugStl.h>
 
@@ -229,6 +235,51 @@ void Request_maps::update()
 
     }
 
+    load_map_info();
+    load_set_background();
+
+}
+
+void Request_maps::load_set_background()
+{
+    std::vector<std::pair<std::string, Future>> set_background_loaded;
+    for(auto& background : set_background_loading) {
+        if(background.second.ready()) {
+            set_background_loaded.push_back(std::move(background));
+        }
+    }
+    const auto removable = std::remove_if(set_background_loading.begin(), set_background_loading.end(),
+                                          [](const auto& background)
+                                          {
+                                              return !background.second.valid();
+                                          });
+    set_background_loading.erase(removable, set_background_loading.end());
+
+    for(auto& background : set_background_loaded){
+        const auto s = background.second.get();
+        Magnum::Trade::JpegImporter importer{};
+        if(!importer.openData(Corrade::Containers::ArrayView<const char>{ s.data(), s.length() })){
+            Magnum::Debug() << "Error opening image data" << background.first;
+        }
+        else{
+            const auto image_data = importer.image2D(0);
+
+            if(image_data){
+                set_background[background.first] = Magnum::GL::Texture2D{};
+                auto& texture = *set_background[background.first];
+                texture.setStorage(1, Magnum::GL::textureFormat(image_data->format()), image_data->size());
+
+                if(image_data->isCompressed()) texture.setCompressedSubImage(0, {}, *image_data);
+                else texture.setSubImage(0, {}, *image_data);
+            }else{
+                Magnum::Debug() << "Couldn't parse image" << background.first;
+            }
+        }
+    }
+}
+
+void Request_maps::load_map_info()
+{
     std::vector<Future> map_info_loaded;
     for(auto& map : map_info_loading) {
         if(map.ready()) {
@@ -252,6 +303,12 @@ void Request_maps::update()
                 for(auto map : json) {
                     auto beatmap = map.get<Beatmap>();
                     map_info[beatmap.map_id] = beatmap;
+
+                    if(const auto it = set_background.find(beatmap.mapset_id);
+                       it == set_background.end()){
+                        set_background_loading.push_back({ beatmap.mapset_id, get_set_background(beatmap.mapset_id) });
+                        set_background.emplace(beatmap.mapset_id, std::nullopt);
+                    }
                 }
             }
         }
@@ -259,6 +316,43 @@ void Request_maps::update()
             Magnum::Debug() << "Couldn't parse map_info" << s;
         }
     }
+}
+
+Future Request_maps::get_set_background(const std::string& set_id) const
+{
+
+    return Future{ std::async(std::launch::async, [](const auto& set_id)->std::string
+    {
+        // attempt to load from cache
+        const auto home_dir = std::filesystem::path{ std::getenv("OSUTOP_HOME") };
+        const auto cache_dir = home_dir / "cache";
+        const auto filename = cache_dir / (set_id + ".jpg");
+
+        if(std::filesystem::exists(filename)){
+            std::ifstream file{ filename, std::ios::in | std::ios::binary | std::ios::ate };
+            const auto size = file.tellg();
+            file.seekg(0, std::ios::beg);
+
+            std::vector<char> buffer(size);
+            file.read(buffer.data(), size);
+
+            std::string string_data{ buffer.cbegin(), buffer.cend() };
+            if(!string_data.empty())
+                return string_data;
+        }
+
+        const auto content = get_url_async_ratelimited("https://assets.ppy.sh/beatmaps/" + set_id + "/covers/cover.jpg").get();
+
+        if(!std::filesystem::exists(cache_dir)){
+            std::filesystem::create_directories(cache_dir);
+        }
+        std::ofstream file{ filename, std::ios::binary };
+        file << content;
+
+        return content;
+
+
+    }, set_id) };
 }
 
 void Request_maps::request_window()
@@ -321,6 +415,15 @@ void Request_maps::request_window()
             }
             else{
                 auto& info = *map_info[map_id];
+
+                auto& texture = set_background[info.mapset_id];
+                if(texture) {
+                    const auto window_size = ImGui::GetWindowSize();
+                    const auto ratio = static_cast<float>(texture->imageSize(0).y()) / texture->imageSize(0).x();
+                    ImGui::Image(static_cast<void*>(&*texture), { window_size.x, window_size.x * ratio },
+                                 { 0, 1 }, { 1, 0 });
+                }
+
                 ImGui::LabelText("Title", info.title.c_str());
                 ImGui::LabelText("Artist", info.artist.c_str());
                 ImGui::LabelText("Difficulty", info.diff_name.c_str());
