@@ -4,6 +4,8 @@
 #include <misc/cpp/imgui_stdlib.h>
 #include <nlohmann/json.hpp>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 #include <Corrade/Utility/DebugStl.h>
 
@@ -238,15 +240,14 @@ void Request_maps::update()
                                           });
     map_info_loading.erase(removable, map_info_loading.end());
 
-    for(auto& map : map_info_loaded){
+    for(auto& map : map_info_loaded) {
         const auto s = map.get();
         try {
             const auto json = nlohmann::json::parse(s);
-            if(json.size() != 1){
+            if(json.size() != 1) {
                 Magnum::Debug() << "Map_info doesn't contain 1 element" << s;
-            }
-            else{
-                for(auto map : json){
+            } else {
+                for(auto map : json) {
                     auto beatmap = map.get<Beatmap>();
                     map_info[beatmap.map_id] = beatmap;
                 }
@@ -350,9 +351,32 @@ void Request_maps::request()
 
 Future Request_maps::get_map(const std::string& beatmap_id) const
 {
-    return get_url_async_ratelimited(
-            "https://osu.ppy.sh/api/get_beatmaps?k=" + config.config.api_key + "&b=" + beatmap_id + "&m=" +
-            std::to_string(static_cast<int>(gamemode)) + "&limit=5");
+    return Future{ std::async(std::launch::async, [](const auto& beatmap_id, const auto& config, const auto gamemode) -> std::string
+    {
+        // attempt to load from cache
+        const auto home_dir = std::filesystem::path{ std::getenv("OSUTOP_HOME") };
+        const auto cache_dir = home_dir / "cache";
+        const auto filename = cache_dir / beatmap_id;
+
+        if(std::filesystem::exists(filename)){
+            std::ifstream file{ filename };
+            std::string buffer;
+            std::getline(file, buffer, static_cast<char>(file.eof()));
+            return buffer;
+        }
+
+        const auto content = get_url_async_ratelimited(
+                "https://osu.ppy.sh/api/get_beatmaps?k=" + config.config.api_key + "&b=" + beatmap_id + "&m=" +
+                std::to_string(static_cast<int>(gamemode)) + "&limit=5").get();
+
+        if(!std::filesystem::exists(cache_dir)){
+            std::filesystem::create_directories(cache_dir);
+        }
+        std::ofstream file{ filename };
+        file << content;
+
+        return content;
+    }, beatmap_id, config, gamemode) };
 }
 
 Future Request_maps::top_plays(std::string_view player, Gamemode gamemode, const std::string& api_key)
