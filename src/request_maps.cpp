@@ -214,6 +214,8 @@ void Request_maps::update()
                 return a.beatmap_id < b.beatmap_id;
             });
             recommendations.insert(pos, score);
+            if(std::distance(recommendations.begin(), pos) <= recommendation_selection)
+                ++recommendation_selection;
         }
 
         recommendations_strings.clear();
